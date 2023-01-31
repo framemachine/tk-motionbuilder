@@ -166,19 +166,37 @@ class MotionBuilderEngine(sgtk.platform.Engine):
         """
         from sgtk.platform.qt import QtGui
 
-        # get all top level windows:
-        top_level_windows = QtGui.QApplication.topLevelWidgets()
+        # find the main application window.
+        main_win = QtGui.QApplication.activeWindow()
+        while main_win and main_win.parentWidget() != None:
+            main_win = main_win.parentWidget()
+        
+        # if this logic fails, try other ones
+        if not main_win:
+            # get all top level windows:
+            top_level_windows = QtGui.QApplication.topLevelWidgets()
+            if float(FBSystem().Version) >= 22000:
+                main_window_type = QtGui.QMainWindow
+            else:
+                main_window_type = QtGui.QWidget
 
-        # from this list, find the main application window.
-        for w in top_level_windows:
-            if (
-                type(w) == QtGui.QWidget
-                and len(w.windowTitle()) > 0
-                and w.parentWidget() is None
-            ):
-                return w
-
-        return None
+            # from this list, find the main application window.
+            candidates = []
+            for w in top_level_windows:
+                if (
+                    type(w) == main_window_type
+                    and len(w.windowTitle()) > 0
+                    and w.parentWidget() is None
+                ):
+                    candidates.append(w)
+                    main_win = w
+            # prior to MotionBuilder 2022 there could be multiple matching candidates
+            # to distinguish the main window look up keyword MotionBuilder in windowTitle
+            if len(candidates) > 1:
+                for w in candidates:
+                    if('MotionBuilder' in w.windowTitle()):
+                        main_win = w
+        return main_win
 
     def _initialize_menu(self):
         """
