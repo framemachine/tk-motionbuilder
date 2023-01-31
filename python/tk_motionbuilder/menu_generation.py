@@ -22,6 +22,7 @@ from tank_vendor import six
 from pyfbsdk import FBSystem
 from pyfbsdk import FBMenuManager
 from pyfbsdk import FBGenericMenu
+from sgtk.platform.qt import QtGui, QtCore
 
 logger = sgtk.platform.get_logger(__name__)
 
@@ -266,9 +267,26 @@ class AppCommand(object):
     def __init__(self, name, command_dict):
 
         self.properties = command_dict["properties"]
-        self.callback = command_dict["callback"]
+        self._callback = command_dict["callback"]
         self.favourite = False
         self.name = six.ensure_str(name)
+
+
+    def callback(self, *a, **kwa):
+        return self._show_existing_window_or_run_callback(*a, **kwa)
+
+    def _show_existing_window_or_run_callback(self, *a, **kwa):
+        display_name = 'ShotGrid: ' + self.name.rstrip(' .')
+        tops = QtGui.QApplication.topLevelWidgets()
+        for top in tops:
+            if top.isWindow() and \
+               display_name in top.windowTitle() and \
+               top.__class__.__name__ == 'TankQDialog':
+                top.show()
+                top.activateWindow()
+                return None
+
+        return self._callback(*a, **kwa)
 
     def get_app_name(self):
         """
